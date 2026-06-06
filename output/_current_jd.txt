@@ -1,0 +1,19 @@
+We're Hiring: Frontend Developer
+Are you passionate about building modern, responsive web applications? We're looking for a Frontend Developer to join a fast-growing product-based organization and help create exceptional user experiences.
+📍 Location: Bellandur, Bangalore
+ 🏢 Work Mode: Hybrid
+ 💼 Experience: 0–1 Year
+ 🎓 Fresh Graduates & Final Year Students Welcome
+Key Responsibilities
+✅ Build and maintain responsive web pages and UI components
+ ✅ Develop dashboard layouts and interactive interfaces
+ ✅ Convert design mockups into pixel-perfect web applications
+ ✅ Collaborate with designers and backend developers
+ ✅ Write clean, reusable, and maintainable code
+ ✅ Ensure cross-browser and mobile compatibility
+Required Skills
+✔ HTML5, CSS3, JavaScript (ES6+)
+ ✔ Basic knowledge of React.js and Next.js
+ ✔ Understanding of UI/UX principles
+ ✔ Strong problem-solving skills
+ ✔ Good communication and teamwork

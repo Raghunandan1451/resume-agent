@@ -1,0 +1,79 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{multicol}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{parskip}
+\usepackage{changepage}
+\usepackage[default]{roboto}
+
+\setlist[itemize]{leftmargin=*, noitemsep, topsep=0pt}
+
+\begin{document}
+
+% Name and Title
+\begin{center}
+    {\Huge \textbf{{{NAME}}}}\\
+    \vspace{2pt}
+    {\large {{TITLE}}}
+\end{center}
+
+% Summary
+\vspace{3pt}
+\noindent
+{{SUMMARY}}
+
+% Contact Info
+\begin{adjustwidth}{-1.5in}{-1in}
+\noindent
+\colorbox{gray!20}{%
+  \parbox{\dimexpr\paperwidth+2in-2\fboxsep\relax}{%
+    \centering
+    \small \href{mailto:{{EMAIL}}}{{{EMAIL}}} \quad\quad
+    {{PHONE}} \quad\quad
+    \href{{{LINKEDIN_URL}}}{{{LINKEDIN_LABEL}}} \quad\quad
+    \href{{{PORTFOLIO_URL}}}{{{PORTFOLIO_LABEL}}}
+  }%
+}
+\end{adjustwidth}
+
+% Skills
+\vspace{-6pt}
+\section*{Skills}
+\vspace{-10pt}
+\noindent\rule{\textwidth}{0.4pt}
+
+\noindent
+\begin{tabular}{p{0.5\textwidth} p{0.5\textwidth}}
+    {{SKILLS_TABLE}}
+\end{tabular}
+
+% Work Experience
+\vspace{-12pt}
+\section*{Work Experience}
+\vspace{-10pt}
+\noindent\rule{\textwidth}{0.4pt}
+
+{{EXPERIENCE}}
+
+% Projects
+\vspace{-10pt}
+\section*{Projects}
+\vspace{-10pt}
+\noindent\rule{\textwidth}{0.4pt}
+
+{{PROJECTS}}
+
+% Education
+\vspace{-10pt}
+\section*{Education}
+\vspace{-10pt}
+\noindent\rule{\textwidth}{0.4pt}
+
+\textbf{{{EDU_DEGREE}}} \\
+{{EDU_INSTITUTION}} \hfill {{EDU_CGPA}} CGPA \\
+\textbf{Relevant Coursework:} {{EDU_COURSEWORK}}
+
+\end{document}

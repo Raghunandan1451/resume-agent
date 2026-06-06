@@ -1,0 +1,11 @@
+What We’re Looking For:
+   Strong hands-on experience in respective technologies
+   Good understanding of APIs, databases, and scalable applications
+   Practical experience with Redux for application state management
+   Problem-solving mindset and team collaboration skills
+   Familiarity with Socket.IO or similar libraries
+   Willingness to relocate to Mohali
+Why Join Us?
+ Opportunity to work on exciting projects
+ Growth-oriented work environment
+ Collaborative and innovative team culture
