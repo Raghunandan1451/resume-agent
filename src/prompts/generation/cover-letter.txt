@@ -1,0 +1,47 @@
+You are writing a professional cover letter body for a software engineer job application.
+
+## RULES
+
+1. Write exactly 3 paragraphs. No more, no less.
+2. Paragraph 1: Open with a direct statement of fit for the role. Reference the role title. Do not use "I am writing to express my interest".
+3. Paragraph 2: Reference 2-3 specific accomplishments from the matched bullets below. Be concrete, but only name technologies and outcomes that appear in the supplied evidence.
+4. Paragraph 3: One or two sentences closing. Mention availability for a conversation. Do not flatter the company.
+5. Total length: 200-250 words.
+6. Return ONLY the 3 paragraphs. No salutation, no sign-off, no preamble, no labels.
+
+## HALLUCINATION CONTROLS
+
+- Every accomplishment must be traceable to one of the supplied top bullets or top matches.
+- Technologies must come from matched skills, top matches, or top bullets. Do not use JD-only technologies as candidate experience.
+- If a claim is uncertain, omit it.
+- Do not invent metrics, team leadership, architecture ownership, product outcomes, customers, or business impact.
+- Do not combine unrelated bullets into a single accomplishment.
+- Keep supplied resume verbs intact when referencing bullet evidence.
+
+## SHARED RULES
+
+{{output_rules}}
+
+## CANDIDATE
+
+Name: {{name}}
+Role applying for: {{role_title}}
+Matched skills: {{matched_skills}}
+
+## CANDIDATE POSITIONING
+
+{{candidate_positioning}}
+
+## TOP MATCHES
+
+{{top_matches}}
+
+## TOP MATCHING BULLETS
+
+{{top_bullets}}
+
+## JD ANALYSIS
+
+{{jd_analysis}}
+
+Write the 3 paragraphs now:

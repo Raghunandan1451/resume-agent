@@ -1,166 +1,126 @@
 /**
- * apply.ts
- * --------
- * Orchestrator — runs the full pipeline in sequence:
- *   1. tailor        → output/tailored.json
- *   2. compile       → output/Name_Role.pdf
- *   3. email         → output/email.txt
- *   4. cover-letter  → output/cover_letter.pdf  (only with --cover flag)
+ * agent/apply.ts
+ * --------------
+ * CLI entry point — runs the full pipeline then compiles PDF.
+ * Business logic lives in src/services/pipeline.service.ts
  *
  * Usage:
- *   npx ts-node agent/apply.ts jd/company-role.txt
- *   npx ts-node agent/apply.ts jd/company-role.txt --name Priya
- *   npx ts-node agent/apply.ts jd/company-role.txt --name Priya --company "XYZ Ltd" --cover
+ *   npx ts-node agent/apply.ts jd/role.txt
+ *   npx ts-node agent/apply.ts jd/role.txt --name Priya --cover
  */
 
-import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
-import { getFlag, OUTPUT_DIR } from "./lib/resume";
+import {
+	formatRecruiterEmail,
+	runPipeline,
+	OUTPUT_DIR,
+} from "../src/services/pipeline.service";
+import {
+	loadResume,
+	parseJDFromArgs,
+	getFlag,
+} from "../src/utils/resume.utils";
+import {
+	injectIntoTemplate,
+	buildOutputFilename,
+} from "../src/utils/latex.utils";
+import { buildCoverLetterTex } from "./lib/cover-letter-tex";
+import fs from "fs";
 
-type StepStatus = "running" | "done" | "failed" | "skipped";
-
-interface Step {
-	label: string;
-	status: StepStatus;
-	duration?: string;
-}
-
-const steps: Step[] = [];
-
-function printSteps() {
-	const icons: Record<StepStatus, string> = {
-		running: "⏳",
-		done: "✅",
-		failed: "❌",
-		skipped: "⏭ ",
-	};
-	console.clear();
-	console.log("\n  Resume Agent — Full Pipeline\n");
-	steps.forEach((s) =>
-		console.log(
-			`  ${icons[s.status]}  ${s.label.padEnd(35)} ${s.duration ?? ""}`,
-		),
-	);
-	console.log("");
-}
-
-function runStep(label: string, command: string, skip = false): boolean {
-	const step: Step = { label, status: skip ? "skipped" : "running" };
-	steps.push(step);
-	printSteps();
-	if (skip) return true;
-
-	const start = Date.now();
-	try {
-		execSync(command, {
-			cwd: path.resolve(__dirname, ".."),
-			stdio: "pipe",
-		});
-		step.status = "done";
-		step.duration = `${((Date.now() - start) / 1000).toFixed(1)}s`;
-		printSteps();
-		return true;
-	} catch (err) {
-		step.status = "failed";
-		step.duration = `${((Date.now() - start) / 1000).toFixed(1)}s`;
-		printSteps();
-		const e = err as { stderr?: Buffer; stdout?: Buffer };
-		if (e.stderr?.toString().trim()) console.error(e.stderr.toString());
-		if (e.stdout?.toString().trim()) console.error(e.stdout.toString());
-		return false;
-	}
-}
-
-function printSummary(includeCover: boolean) {
-	console.log("─────────────────────────────────────────────────────");
-	console.log("  Output files:\n");
-	const files = [
-		{ label: "Tailored resume JSON", file: "output/tailored.json" },
-		{ label: "Resume PDF", file: "output/*.pdf" },
-		{ label: "Recruiter email", file: "output/email.txt" },
-		...(includeCover
-			? [{ label: "Cover letter PDF", file: "output/cover_letter.pdf" }]
-			: []),
-	];
-	files.forEach((f) => console.log(`  📄 ${f.label.padEnd(25)} ${f.file}`));
-	console.log("\n  Next steps:");
-	console.log("  1. Review output/email.txt and copy into your email client");
-	console.log("  2. Attach the resume PDF");
-	console.log(
-		"  3. Run 'npm run ui' to review resume changes in the diff viewer\n",
-	);
-}
+const TEMPLATE_PATH = path.resolve(__dirname, "../src/templates/resume.tex");
 
 async function main() {
 	const args = process.argv.slice(2);
 	if (args.length === 0) {
 		console.error(
-			'\nUsage:\n  npx ts-node agent/apply.ts jd/company-role.txt [--name Priya] [--company "XYZ"] [--cover]',
+			"Usage:\n  npx ts-node agent/apply.ts jd/role.txt [--name Priya] [--cover]",
 		);
 		process.exit(1);
 	}
 
 	const recruiterName = getFlag(args, "--name");
-	const companyName = getFlag(args, "--company");
 	const includeCover = args.includes("--cover");
-	const jdFile =
-		args.find(
-			(a) =>
-				!a.startsWith("--") && a !== recruiterName && a !== companyName,
-		) ?? "";
-
-	if (!jdFile) {
+	const jdArg = args.find((a) => !a.startsWith("--") && a !== recruiterName);
+	if (!jdArg) {
 		console.error("No JD file provided.");
 		process.exit(1);
 	}
-	if (!fs.existsSync(path.resolve(jdFile))) {
-		console.error(`JD file not found: ${jdFile}`);
-		process.exit(1);
-	}
 
-	fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+	const jdText = parseJDFromArgs([jdArg]);
+	const resume = loadResume();
 
-	const emailFlags = [
-		recruiterName ? `--name ${recruiterName}` : "",
-		companyName ? `--company "${companyName}"` : "",
-	]
-		.filter(Boolean)
-		.join(" ");
+	// Run pipeline — all AI calls happen inside here
+	const result = await runPipeline(jdText, resume, {
+		recruiterName,
+		includeCover,
+	});
 
-	const tsnode = "npx ts-node";
+	// Print email to terminal
+	console.log("─────────────────────────────────────────");
+	console.log("SUBJECT:", result.email.subject);
+	console.log("─────────────────────────────────────────");
+	console.log(formatRecruiterEmail(result.email, resume, { recruiterName }));
+	console.log("─────────────────────────────────────────\n");
 
-	const ok1 = runStep(
-		"Tailoring resume to JD",
-		`${tsnode} agent/tailor.ts "${jdFile}"`,
+	// Compile resume PDF
+	console.log("📄 Compiling resume PDF...");
+	const template = fs.readFileSync(TEMPLATE_PATH, "utf-8");
+	const baseName = buildOutputFilename(
+		resume.header.name,
+		result.jdAnalysis.roleTitle,
 	);
-	if (!ok1) {
-		console.error("\n  ❌ Stopped at tailor step.");
-		process.exit(1);
-	}
+	const texOut = path.join(OUTPUT_DIR, `${baseName}.tex`);
+	const pdfOut = path.join(OUTPUT_DIR, `${baseName}.pdf`);
 
-	const ok2 = runStep("Compiling resume PDF", `${tsnode} agent/compile.ts`);
-	if (!ok2) {
-		console.error("\n  ❌ Stopped at compile step.");
-		process.exit(1);
-	}
-
-	const ok3 = runStep(
-		"Generating recruiter email",
-		`${tsnode} agent/email.ts "${jdFile}" ${emailFlags}`.trim(),
+	fs.writeFileSync(
+		texOut,
+		injectIntoTemplate(template, result.tailoredResume),
 	);
-	if (!ok3) {
-		console.error("\n  ❌ Stopped at email step.");
+	const cmd = `pdflatex -interaction=nonstopmode -output-directory="${OUTPUT_DIR}" "${texOut}"`;
+	try {
+		execSync(cmd, { stdio: "pipe" });
+		execSync(cmd, { stdio: "pipe" });
+	} catch {
+		/* check below */
+	}
+	if (!fs.existsSync(pdfOut)) {
+		console.error("❌ PDF compile failed");
 		process.exit(1);
 	}
+	[".aux", ".log", ".out", ".tex"].forEach((ext) => {
+		const f = path.join(OUTPUT_DIR, `${baseName}${ext}`);
+		if (fs.existsSync(f)) fs.unlinkSync(f);
+	});
+	console.log(`✅ Resume PDF → output/${baseName}.pdf`);
 
-	runStep(
-		"Generating cover letter",
-		`${tsnode} agent/cover-letter.ts "${jdFile}"`,
-		!includeCover,
-	);
+	// Compile cover letter PDF if requested
+	if (includeCover && result.coverLetter) {
+		console.log("📄 Compiling cover letter PDF...");
+		const clTex = path.join(OUTPUT_DIR, "cover_letter.tex");
+		const clPdf = path.join(OUTPUT_DIR, "cover_letter.pdf");
+		fs.writeFileSync(
+			clTex,
+			buildCoverLetterTex(resume, result.coverLetter.body),
+		);
+		try {
+			execSync(
+				`pdflatex -interaction=nonstopmode -output-directory="${OUTPUT_DIR}" "${clTex}"`,
+				{ stdio: "pipe" },
+			);
+		} catch {
+			/* check below */
+		}
+		if (fs.existsSync(clPdf)) {
+			[".aux", ".log", ".out"].forEach((ext) => {
+				const f = path.join(OUTPUT_DIR, `cover_letter${ext}`);
+				if (fs.existsSync(f)) fs.unlinkSync(f);
+			});
+			console.log("✅ Cover letter PDF → output/cover_letter.pdf");
+		}
+	}
 
-	printSummary(includeCover);
+	console.log("\n✅ All done. Check the output/ folder.\n");
 }
 
 main().catch((err) => {

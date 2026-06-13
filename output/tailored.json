@@ -1,8 +1,14 @@
 {
   "header": {
     "name": "Raghunandan Sharma",
-    "title": "Frontend Developer",
-    "summary": "Frontend Developer with a passion for building modern, responsive web applications and converting design mockups into pixel-perfect interfaces."
+    "title": "ReactJS Developer",
+    "summary": "Mid-level ReactJS Developer with strong skills in crafting intuitive interfaces and developing robust front-end solutions. Proven expertise in multi-path conditional workflows, AI-assisted quiz generation pipelines, and data integrity management."
+  },
+  "contact": {
+    "email": "raghu.sharma.dev@gmail.com",
+    "phone": "9814101383",
+    "linkedin": "https://linkedin.com/in/raghunandan-sharma/",
+    "portfolio": "https://raghunandan-sharma.vercel.app"
   },
   "skills": [
     {
@@ -74,20 +80,10 @@
           "tags": [
             "MERN",
             "MongoDB",
+            "Node.js",
             "React",
             "CRUD",
             "full-stack"
-          ]
-        },
-        {
-          "verb": "Designed and validated",
-          "text": "multi-path conditional workflows, handling complex branching logic across question, stub, and termination levels to ensure state consistency.",
-          "tags": [
-            "architecture",
-            "state-management",
-            "workflows",
-            "logic",
-            "frontend"
           ]
         },
         {
@@ -98,7 +94,18 @@
             "AWS Bedrock",
             "LLM",
             "pipeline",
-            "frontend"
+            "backend"
+          ]
+        },
+        {
+          "verb": "Integrated",
+          "text": "an AI-assisted quiz generation pipeline using AWS Bedrock (Nova Lite), aggregating multi-page context to generate structured quizzes with answer keys for knowledge validation workflows.",
+          "tags": [
+            "AI",
+            "AWS Bedrock",
+            "LLM",
+            "pipeline",
+            "backend"
           ]
         },
         {
@@ -109,7 +116,7 @@
             "QA",
             "migration",
             "reliability",
-            "frontend"
+            "backend"
           ]
         }
       ]
@@ -185,7 +192,7 @@
             "React",
             "client-side",
             "Redux",
-            "frontend"
+            "full-stack"
           ]
         },
         {
@@ -231,7 +238,8 @@
           "tags": [
             "WebSockets",
             "real-time",
-            "frontend"
+            "Node.js",
+            "backend"
           ]
         },
         {
@@ -241,19 +249,13 @@
             "MongoDB",
             "JWT",
             "authentication",
-            "frontend",
+            "backend",
             "Node.js"
           ]
         }
       ]
     }
   ],
-  "contact": {
-    "email": "raghu.sharma.dev@gmail.com",
-    "phone": "9814101383",
-    "linkedin": "https://linkedin.com/in/raghunandan-sharma/",
-    "portfolio": "https://raghunandan-sharma.vercel.app"
-  },
   "education": {
     "degree": "BE -- Computer Science and Engineering",
     "institution": "Chitkara University, Punjab",

@@ -9,45 +9,22 @@ export default function PdfViewer({ filename, label }: Props) {
 	const url = `${API}/api/pdf/${encodeURIComponent(filename)}`;
 
 	return (
-		<div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-			<div
-				style={{
-					display: "flex",
-					justifyContent: "space-between",
-					alignItems: "center",
-				}}
-			>
-				<span style={{ fontSize: 11, color: "#444", letterSpacing: 2 }}>
-					{label.toUpperCase()}
+		<div className="flex flex-col gap-3">
+			<div className="flex items-center justify-between">
+				<span className="text-[10px] text-neutral-600 tracking-widest uppercase">
+					{label}
 				</span>
 				<a
 					href={url}
 					download={filename}
-					style={{
-						background: "none",
-						border: "1px solid #333",
-						color: "#666",
-						padding: "4px 12px",
-						borderRadius: 4,
-						cursor: "pointer",
-						fontSize: 11,
-						fontFamily: "'IBM Plex Mono', monospace",
-						textDecoration: "none",
-					}}
+					className="text-[10px] text-neutral-600 border border-neutral-800 px-3 py-1 rounded hover:text-neutral-400 hover:border-neutral-600 transition-colors no-underline"
 				>
 					↓ Download
 				</a>
 			</div>
-
 			<iframe
 				src={url}
-				style={{
-					width: "100%",
-					height: 700,
-					border: "1px solid #1f1f1f",
-					borderRadius: 8,
-					background: "#0a0a0a",
-				}}
+				className="w-full h-175 border border-neutral-800 rounded-xl bg-neutral-950"
 				title={label}
 			/>
 		</div>

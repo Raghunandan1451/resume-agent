@@ -19,101 +19,81 @@ export default function InputPanel({ onRun, running }: Props) {
 	const canRun = jdText.trim().length > 20 && !running;
 
 	return (
-		<div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-			{/* JD Input */}
-			<div>
-				<label style={labelStyle}>Job Description *</label>
+		<div className="flex flex-col gap-4">
+			{/* JD textarea */}
+			<div className="flex flex-col gap-1.5">
+				<label className="text-[10px] text-neutral-600 tracking-widest uppercase">
+					Job Description *
+				</label>
 				<textarea
 					value={jdText}
 					onChange={(e) => setJdText(e.target.value)}
 					placeholder="Paste the full job description here..."
-					style={{
-						...inputStyle,
-						height: 220,
-						resize: "vertical",
-						fontFamily: "inherit",
-					}}
+					className="scrollbar-auto w-full h-52 bg-neutral-950 border border-neutral-800 rounded-md px-3 py-2.5 text-sm text-neutral-300 placeholder-neutral-700 resize-y outline-none focus:border-neutral-600 font-mono"
 				/>
-				<div style={{ fontSize: 11, color: "#444", marginTop: 4 }}>
+				<span className="text-[10px] text-neutral-700">
 					{jdText.length > 0
 						? `${jdText.length} characters`
 						: "Paste the full JD for best results"}
-				</div>
+				</span>
 			</div>
 
 			{/* Optional fields */}
-			<div
-				style={{
-					display: "grid",
-					gridTemplateColumns: "1fr 1fr",
-					gap: 12,
-				}}
-			>
-				<div>
-					<label style={labelStyle}>
+			<div className="grid grid-cols-2 gap-3">
+				<div className="flex flex-col gap-1.5">
+					<label className="text-[10px] text-neutral-600 tracking-widest uppercase">
 						Recruiter Name{" "}
-						<span style={{ color: "#444" }}>(optional)</span>
+						<span className="normal-case text-neutral-700">
+							(optional)
+						</span>
 					</label>
 					<input
 						value={recruiterName}
 						onChange={(e) => setRecruiterName(e.target.value)}
 						placeholder="e.g. Priya"
-						style={inputStyle}
+						className="w-full bg-neutral-950 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-300 placeholder-neutral-700 outline-none focus:border-neutral-600 font-mono"
 					/>
 				</div>
-				<div>
-					<label style={labelStyle}>
+				<div className="flex flex-col gap-1.5">
+					<label className="text-[10px] text-neutral-600 tracking-widest uppercase">
 						Company Name{" "}
-						<span style={{ color: "#444" }}>(optional)</span>
+						<span className="normal-case text-neutral-700">
+							(optional)
+						</span>
 					</label>
 					<input
 						value={companyName}
 						onChange={(e) => setCompanyName(e.target.value)}
-						placeholder="e.g. Suffescom Solutions"
-						style={inputStyle}
+						placeholder="e.g. Acme Corp"
+						className="w-full bg-neutral-950 border border-neutral-800 rounded-md px-3 py-2 text-sm text-neutral-300 placeholder-neutral-700 outline-none focus:border-neutral-600 font-mono"
 					/>
 				</div>
 			</div>
 
 			{/* Cover letter toggle */}
-			<label
-				style={{
-					display: "flex",
-					alignItems: "center",
-					gap: 10,
-					cursor: "pointer",
-					fontSize: 13,
-					color: "#888",
-					userSelect: "none",
-				}}
-			>
-				<div
+			<label className="flex items-center gap-3 cursor-pointer select-none">
+				<button
+					type="button"
 					onClick={() => setIncludeCover((v) => !v)}
-					style={{
-						width: 36,
-						height: 20,
-						borderRadius: 10,
-						background: includeCover ? "#166534" : "#222",
-						border: `1px solid ${includeCover ? "#14532d" : "#333"}`,
-						position: "relative",
-						cursor: "pointer",
-						transition: "background 0.2s",
-					}}
+					className={[
+						"relative w-9 h-5 rounded-full border transition-colors duration-200",
+						includeCover
+							? "bg-green-900 border-green-700"
+							: "bg-neutral-900 border-neutral-700",
+					].join(" ")}
 				>
-					<div
-						style={{
-							position: "absolute",
-							top: 2,
-							left: includeCover ? 17 : 2,
-							width: 14,
-							height: 14,
-							borderRadius: "50%",
-							background: includeCover ? "#86efac" : "#555",
-							transition: "left 0.2s",
-						}}
+					<span
+						className={[
+							"absolute top-0.5 w-3.5 h-3.5 rounded-full transition-all duration-200",
+							includeCover
+								? "left-4.5 bg-green-400"
+								: "left-0.5 bg-neutral-600",
+						].join(" ")}
 					/>
-				</div>
-				Generate cover letter PDF
+				</button>
+				<span className="text-xs text-neutral-500">
+					Generate cover letter PDF
+				</span>
 			</label>
 
 			{/* Run button */}
@@ -122,44 +102,15 @@ export default function InputPanel({ onRun, running }: Props) {
 					onRun({ jdText, recruiterName, companyName, includeCover })
 				}
 				disabled={!canRun}
-				style={{
-					background: canRun ? "#166534" : "#111",
-					border: `1px solid ${canRun ? "#14532d" : "#222"}`,
-					color: canRun ? "#86efac" : "#333",
-					padding: "12px 0",
-					borderRadius: 8,
-					fontSize: 13,
-					fontWeight: 700,
-					cursor: canRun ? "pointer" : "not-allowed",
-					fontFamily: "'IBM Plex Mono', monospace",
-					transition: "all 0.15s",
-					letterSpacing: 1,
-				}}
+				className={[
+					"w-full py-3 rounded-lg text-xs font-bold tracking-widest transition-all duration-150 border",
+					canRun
+						? "bg-green-950 border-green-800 text-green-400 hover:bg-green-900 cursor-pointer"
+						: "bg-neutral-950 border-neutral-800 text-neutral-700 cursor-not-allowed",
+				].join(" ")}
 			>
 				{running ? "⏳  RUNNING..." : "▶  RUN PIPELINE"}
 			</button>
 		</div>
 	);
 }
-
-const labelStyle: React.CSSProperties = {
-	display: "block",
-	fontSize: 11,
-	color: "#555",
-	letterSpacing: 1,
-	textTransform: "uppercase",
-	marginBottom: 6,
-};
-
-const inputStyle: React.CSSProperties = {
-	width: "100%",
-	background: "#0f0f0f",
-	border: "1px solid #222",
-	borderRadius: 6,
-	padding: "10px 12px",
-	color: "#ccc",
-	fontSize: 13,
-	fontFamily: "'IBM Plex Mono', monospace",
-	outline: "none",
-	boxSizing: "border-box",
-};

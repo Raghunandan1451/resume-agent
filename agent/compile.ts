@@ -1,8 +1,8 @@
 /**
- * compile.ts
- * ----------
- * Injects tailored.json (or base.json) into template.tex and compiles to PDF.
- * Output filename is derived from name + role title: Raghunandan_Sharma_ReactJS_Developer.pdf
+ * agent/compile.ts
+ * ----------------
+ * Compiles tailored.json (or base.json) into a PDF via pdflatex.
+ * No AI involved — pure LaTeX compilation.
  *
  * Usage:
  *   npx ts-node agent/compile.ts
@@ -12,32 +12,27 @@
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
+import { loadResume } from "../src/utils/resume.utils";
 import {
-	loadResume,
-	OUTPUT_DIR,
-	BASE_RESUME_PATH,
-	TAILORED_PATH,
-} from "./lib/resume";
-import { injectIntoTemplate, buildOutputFilename } from "./lib/latex";
+	injectIntoTemplate,
+	buildOutputFilename,
+} from "../src/utils/latex.utils";
 
-const TEMPLATE_PATH = path.resolve(__dirname, "../resume/template.tex");
+const ROOT = path.resolve(__dirname, "..");
+const OUTPUT_DIR = path.join(ROOT, "output");
+const TEMPLATE_PATH = path.join(ROOT, "src", "templates", "resume.tex");
 
 function main() {
 	const useBase = process.argv.includes("--base");
-	const jsonPath = useBase ? BASE_RESUME_PATH : TAILORED_PATH;
+	const jsonPath = useBase
+		? path.join(ROOT, "resume", "base.json")
+		: path.join(OUTPUT_DIR, "tailored.json");
 	const label = useBase ? "base.json" : "tailored.json";
 
 	if (!fs.existsSync(jsonPath)) {
-		console.error(`❌ ${label} not found at ${jsonPath}`);
 		console.error(
-			useBase
-				? "Make sure resume/base.json exists."
-				: "Run 'npm run tailor' first.",
+			`❌ ${label} not found. ${useBase ? "" : "Run npm run apply first."}`,
 		);
-		process.exit(1);
-	}
-	if (!fs.existsSync(TEMPLATE_PATH)) {
-		console.error(`❌ template.tex not found at ${TEMPLATE_PATH}`);
 		process.exit(1);
 	}
 
@@ -47,24 +42,22 @@ function main() {
 		resume.header.name,
 		resume.header.title,
 	);
-	const TEX_OUT = path.join(OUTPUT_DIR, `${baseName}.tex`);
-	const PDF_OUT = path.join(OUTPUT_DIR, `${baseName}.pdf`);
+	const texOut = path.join(OUTPUT_DIR, `${baseName}.tex`);
+	const pdfOut = path.join(OUTPUT_DIR, `${baseName}.pdf`);
 
 	console.log(`\n📄 Compiling from ${label}...`);
 	console.log(`   Output: ${baseName}.pdf\n`);
 
 	fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-	fs.writeFileSync(TEX_OUT, injectIntoTemplate(template, resume), "utf-8");
+	fs.writeFileSync(texOut, injectIntoTemplate(template, resume));
 
-	const cmd = `pdflatex -interaction=nonstopmode -output-directory="${OUTPUT_DIR}" "${TEX_OUT}"`;
-
+	const cmd = `pdflatex -interaction=nonstopmode -output-directory="${OUTPUT_DIR}" "${texOut}"`;
 	console.log("⏳ Running pdflatex (pass 1)...");
 	try {
 		execSync(cmd, { stdio: "pipe" });
 	} catch {
 		/* check PDF below */
 	}
-
 	console.log("⏳ Running pdflatex (pass 2)...");
 	try {
 		execSync(cmd, { stdio: "pipe" });
@@ -72,26 +65,17 @@ function main() {
 		/* check PDF below */
 	}
 
-	if (!fs.existsSync(PDF_OUT)) {
-		console.error(
-			"❌ pdflatex failed. Check the .log file in output/ for details.",
-		);
-		const logPath = path.join(OUTPUT_DIR, `${baseName}.log`);
-		if (fs.existsSync(logPath)) {
-			const lines = fs.readFileSync(logPath, "utf-8").split("\n");
-			console.error("\n--- Last 30 lines ---");
-			console.error(lines.slice(-30).join("\n"));
-		}
+	if (!fs.existsSync(pdfOut)) {
+		console.error("❌ pdflatex failed. Check the .log file in output/");
 		process.exit(1);
 	}
 
-	// Clean auxiliary files
 	[".aux", ".log", ".out", ".tex"].forEach((ext) => {
 		const f = path.join(OUTPUT_DIR, `${baseName}${ext}`);
 		if (fs.existsSync(f)) fs.unlinkSync(f);
 	});
 
-	console.log(`\n✅ PDF ready: ${PDF_OUT}\n`);
+	console.log(`\n✅ PDF ready: ${pdfOut}\n`);
 }
 
 main();

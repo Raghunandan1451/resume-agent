@@ -2,189 +2,294 @@
  * server/index.ts
  * ---------------
  * Express backend for the Resume Agent UI.
- * - POST /api/run     — runs the apply pipeline, streams progress via SSE
- * - GET  /api/output  — returns all output files (email, tailored JSON, base JSON)
- * - GET  /api/pdf/:name — serves a PDF from the output directory
+ * Calls runPipeline() directly — no process spawning.
+ *
+ * Routes:
+ *   POST /api/run      — runs pipeline, streams SSE progress
+ *   GET  /api/output   — returns all output files
+ *   GET  /api/pdf/:name — serves a PDF
  */
 
 import express from "express";
 import cors from "cors";
 import path from "path";
 import fs from "fs";
-import { spawn } from "child_process";
+import { execSync } from "child_process";
+import { runPipeline, OUTPUT_DIR } from "../src/services/pipeline.service";
+import { loadResume } from "../src/utils/resume.utils";
+import {
+	injectIntoTemplate,
+	buildOutputFilename,
+} from "../src/utils/latex.utils";
+import { buildCoverLetterTex } from "../agent/lib/cover-letter-tex";
 
 const app = express();
 const PORT = 3001;
 const ROOT = path.resolve(__dirname, "..");
-const OUTPUT = path.join(ROOT, "output");
+const TEMPLATE_PATH = path.join(ROOT, "src", "templates", "resume.tex");
 
 app.use(cors());
 app.use(express.json());
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface RunRequest {
-	jdText: string;
-	recruiterName?: string;
-	companyName?: string;
-	includeCover?: boolean;
-}
-
-interface PipelineStep {
-	id: string;
-	label: string;
-	status: "pending" | "running" | "done" | "failed" | "skipped";
-	duration?: string;
-}
-
 // ─── POST /api/run ────────────────────────────────────────────────────────────
-// Writes the JD to a temp file, runs apply.ts step by step,
-// and streams SSE events to the frontend.
 
 app.post("/api/run", async (req, res) => {
-	const { jdText, recruiterName, companyName, includeCover } =
-		req.body as RunRequest;
+	const { jdText, recruiterName, companyName, includeCover } = req.body;
 
 	if (!jdText?.trim()) {
 		res.status(400).json({ error: "JD text is required" });
 		return;
 	}
 
-	// SSE headers
+	// SSE setup
 	res.setHeader("Content-Type", "text/event-stream");
 	res.setHeader("Cache-Control", "no-cache");
 	res.setHeader("Connection", "keep-alive");
 	res.flushHeaders();
 
-	const send = (event: string, data: unknown) => {
+	const send = (event: string, data: unknown) =>
 		res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-	};
 
-	// Write JD to temp file
-	fs.mkdirSync(OUTPUT, { recursive: true });
-	const jdPath = path.join(OUTPUT, "_current_jd.txt");
-	fs.writeFileSync(jdPath, jdText, "utf-8");
-
-	// Define pipeline steps
-	const steps: PipelineStep[] = [
-		{ id: "tailor", label: "Tailoring resume to JD", status: "pending" },
-		{ id: "compile", label: "Compiling resume PDF", status: "pending" },
-		{ id: "email", label: "Generating recruiter email", status: "pending" },
+	// Initial step definitions — matched to pipeline.service.ts log order
+	const steps = [
 		{
-			id: "coverletter",
-			label: "Generating cover letter",
+			id: "analyze",
+			label: "Analyzing job description",
+			status: "pending",
+		},
+		{
+			id: "match",
+			label: "Extracting matching experience",
+			status: "pending",
+		},
+		{
+			id: "position",
+			label: "Building candidate positioning",
+			status: "pending",
+		},
+		{ id: "generate", label: "Generating outputs", status: "pending" },
+		{ id: "compile", label: "Compiling resume PDF", status: "pending" },
+		{
+			id: "cover",
+			label: "Compiling cover letter PDF",
 			status: includeCover ? "pending" : "skipped",
 		},
 	];
-
 	send("steps", steps);
 
-	// Build commands
-	const tsnode = "npx ts-node";
-	const emailFlags = [
-		recruiterName ? `--name "${recruiterName}"` : "",
-		companyName ? `--company "${companyName}"` : "",
-	]
-		.filter(Boolean)
-		.join(" ");
+	let restoreConsole: (() => void) | null = null;
 
-	const commands: Record<string, string> = {
-		tailor: `${tsnode} agent/tailor.ts "${jdPath}"`,
-		compile: `${tsnode} agent/compile.ts`,
-		email: `${tsnode} agent/email.ts "${jdPath}" ${emailFlags}`.trim(),
-		coverletter: `${tsnode} agent/cover-letter.ts "${jdPath}"`,
-	};
+	try {
+		const resume = loadResume();
 
-	// Run each step sequentially
-	for (const step of steps) {
-		if (step.status === "skipped") {
-			send("step_update", { id: step.id, status: "skipped" });
-			continue;
-		}
+		// Monkey-patch console.log to emit SSE step updates
+		const originalLog = console.log;
+		restoreConsole = () => {
+			console.log = originalLog;
+		};
+		const stepMap: Record<string, string> = {
+			"[1/4]": "analyze",
+			"[2/4]": "match",
+			"[3/4]": "position",
+			"[4/4]": "generate",
+		};
+		const startTimes: Record<string, number> = {};
+		let activePipelineStep: string | null = null;
 
-		send("step_update", { id: step.id, status: "running" });
-		const start = Date.now();
-
-		const success = await new Promise<boolean>((resolve) => {
-			const [cmd, ...args] = commands[step.id].split(" ");
-			const proc = spawn(cmd, args, {
-				cwd: ROOT,
-				shell: true,
-				env: { ...process.env },
-			});
-
-			let stderr = "";
-			proc.stderr.on("data", (d) => {
-				stderr += d.toString();
-			});
-			proc.on("close", (code) => {
-				if (code !== 0) {
-					send("step_error", {
-						id: step.id,
-						error: stderr.slice(-500),
+		console.log = (...args: unknown[]) => {
+			const msg = args.join(" ");
+			const nextStep = Object.entries(stepMap).find(([key]) =>
+				msg.includes(key),
+			)?.[1];
+			if (nextStep && activePipelineStep !== nextStep) {
+				if (activePipelineStep) {
+					send("step_update", {
+						id: activePipelineStep,
+						status: "done",
+						duration: startTimes[activePipelineStep]
+							? `${((Date.now() - startTimes[activePipelineStep]) / 1000).toFixed(1)}s`
+							: "",
 					});
 				}
-				resolve(code === 0);
-			});
+				activePipelineStep = nextStep;
+				startTimes[nextStep] = Date.now();
+				send("step_update", { id: nextStep, status: "running" });
+			}
+			originalLog(...args);
+		};
+
+		// Save JD to temp file
+		fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+		fs.writeFileSync(path.join(OUTPUT_DIR, "_current_jd.txt"), jdText);
+
+		// Run pipeline
+		const result = await runPipeline(jdText, resume, {
+			recruiterName,
+			companyName,
+			includeCover,
 		});
 
-		const duration = `${((Date.now() - start) / 1000).toFixed(1)}s`;
+		// Restore console.log
+		restoreConsole();
+		restoreConsole = null;
 
-		if (success) {
-			send("step_update", { id: step.id, status: "done", duration });
-		} else {
-			send("step_update", { id: step.id, status: "failed", duration });
-			send("pipeline_error", {
-				message: `Pipeline stopped at: ${step.label}`,
+		if (activePipelineStep) {
+			send("step_update", {
+				id: activePipelineStep,
+				status: "done",
+				duration: startTimes[activePipelineStep]
+					? `${((Date.now() - startTimes[activePipelineStep]) / 1000).toFixed(1)}s`
+					: "",
 			});
-			res.end();
-			return;
 		}
+
+		// Compile resume PDF
+		send("step_update", { id: "compile", status: "running" });
+		const compileStart = Date.now();
+		let compileError = "";
+		try {
+			// Verify template exists before attempting compile
+			if (!fs.existsSync(TEMPLATE_PATH)) {
+				throw new Error(`Template not found: ${TEMPLATE_PATH}`);
+			}
+			const template = fs.readFileSync(TEMPLATE_PATH, "utf-8");
+			const baseName = buildOutputFilename(
+				result.tailoredResume.header.name,
+				result.tailoredResume.header.title,
+			);
+			const texOut = path.join(OUTPUT_DIR, `${baseName}.tex`);
+			const pdfOut = path.join(OUTPUT_DIR, `${baseName}.pdf`);
+			fs.writeFileSync(
+				texOut,
+				injectIntoTemplate(template, result.tailoredResume),
+			);
+
+			// Pass full PATH so pdflatex is found (MiKTeX adds to user PATH, not system PATH)
+			const env = { ...process.env };
+			const cmd = `pdflatex -interaction=nonstopmode -output-directory="${OUTPUT_DIR}" "${texOut}"`;
+			try {
+				execSync(cmd, { stdio: "pipe", env });
+			} catch {
+				/* non-zero ok if PDF produced */
+			}
+			try {
+				execSync(cmd, { stdio: "pipe", env });
+			} catch {
+				/* second pass */
+			}
+
+			const compiled = fs.existsSync(pdfOut);
+			if (compiled) {
+				[".aux", ".log", ".out", ".tex"].forEach((ext) => {
+					const f = path.join(OUTPUT_DIR, `${baseName}${ext}`);
+					if (fs.existsSync(f)) fs.unlinkSync(f);
+				});
+			} else {
+				// Keep .log for diagnosis — print last 20 lines to server console
+				const logPath = path.join(OUTPUT_DIR, `${baseName}.log`);
+				if (fs.existsSync(logPath)) {
+					const logLines = fs
+						.readFileSync(logPath, "utf-8")
+						.split("\n")
+						.slice(-20)
+						.join("\n");
+					console.error("pdflatex log tail:\n", logLines);
+				}
+			}
+			send("step_update", {
+				id: "compile",
+				status: compiled ? "done" : "failed",
+				duration: `${((Date.now() - compileStart) / 1000).toFixed(1)}s`,
+			});
+		} catch (err) {
+			compileError = (err as Error).message;
+			console.error("Compile error:", compileError);
+			send("step_update", {
+				id: "compile",
+				status: "failed",
+				duration: `${((Date.now() - compileStart) / 1000).toFixed(1)}s`,
+			});
+			send("step_error", { id: "compile", error: compileError });
+		}
+
+		// Compile cover letter PDF if requested
+		if (includeCover && result.coverLetter) {
+			send("step_update", { id: "cover", status: "running" });
+			const coverStart = Date.now();
+			const clTex = path.join(OUTPUT_DIR, "cover_letter.tex");
+			const clPdf = path.join(OUTPUT_DIR, "cover_letter.pdf");
+			fs.writeFileSync(
+				clTex,
+				buildCoverLetterTex(resume, result.coverLetter.body),
+			);
+			try {
+				execSync(
+					`pdflatex -interaction=nonstopmode -output-directory="${OUTPUT_DIR}" "${clTex}"`,
+					{ stdio: "pipe" },
+				);
+			} catch {
+				/* ok */
+			}
+			[".aux", ".log", ".out"].forEach((ext) => {
+				const f = path.join(OUTPUT_DIR, `cover_letter${ext}`);
+				if (fs.existsSync(f)) fs.unlinkSync(f);
+			});
+			send("step_update", {
+				id: "cover",
+				status: fs.existsSync(clPdf) ? "done" : "failed",
+				duration: `${((Date.now() - coverStart) / 1000).toFixed(1)}s`,
+			});
+		}
+
+		send("pipeline_done", { message: "Pipeline complete" });
+	} catch (err) {
+		restoreConsole?.();
+		send("pipeline_error", { message: (err as Error).message });
 	}
 
-	send("pipeline_done", { message: "All steps completed" });
 	res.end();
 });
 
 // ─── GET /api/output ──────────────────────────────────────────────────────────
-// Returns all output files the UI needs to display results.
 
 app.get("/api/output", (_req, res) => {
-	const read = (file: string): string | null => {
-		const p = path.join(OUTPUT, file);
+	const read = (file: string) => {
+		const p = path.join(OUTPUT_DIR, file);
 		return fs.existsSync(p) ? fs.readFileSync(p, "utf-8") : null;
 	};
-
 	const readJSON = (file: string) => {
-		const content = read(file);
-		return content ? JSON.parse(content) : null;
+		const c = read(file);
+		return c ? JSON.parse(c) : null;
 	};
-
-	// Find the generated resume PDF (name varies by role title)
-	const pdfFiles = fs.existsSync(OUTPUT)
-		? fs
-				.readdirSync(OUTPUT)
+	// Return most recently modified resume PDF — prevents stale results from old runs
+	const resumePdf = fs.existsSync(OUTPUT_DIR)
+		? (fs
+				.readdirSync(OUTPUT_DIR)
 				.filter((f) => f.endsWith(".pdf") && f !== "cover_letter.pdf")
-		: [];
+				.map((f) => ({
+					name: f,
+					mtime: fs.statSync(path.join(OUTPUT_DIR, f)).mtimeMs,
+				}))
+				.sort((a, b) => b.mtime - a.mtime)[0]?.name ?? null)
+		: null;
 
 	res.json({
 		base: readJSON("../resume/base.json"),
 		tailored: readJSON("tailored.json"),
 		email: read("email.txt"),
 		coverLetter: read("cover_letter.txt"),
-		resumePdf: pdfFiles[0] ?? null,
-		coverPdf: fs.existsSync(path.join(OUTPUT, "cover_letter.pdf"))
+		resumePdf,
+		coverPdf: fs.existsSync(path.join(OUTPUT_DIR, "cover_letter.pdf"))
 			? "cover_letter.pdf"
 			: null,
 	});
 });
 
 // ─── GET /api/pdf/:name ───────────────────────────────────────────────────────
-// Serves a PDF file from the output directory.
 
 app.get("/api/pdf/:name", (req, res) => {
-	const name = path.basename(req.params.name); // prevent path traversal
-	const pdfPath = path.join(OUTPUT, name);
+	const name = path.basename(req.params.name);
+	const pdfPath = path.join(OUTPUT_DIR, name);
 	if (!fs.existsSync(pdfPath)) {
 		res.status(404).json({ error: "PDF not found" });
 		return;
@@ -193,9 +298,7 @@ app.get("/api/pdf/:name", (req, res) => {
 	res.sendFile(pdfPath);
 });
 
-// ─── Start ────────────────────────────────────────────────────────────────────
-
 app.listen(PORT, () => {
-	console.log(`\n✅ Resume Agent server running at http://localhost:${PORT}`);
-	console.log("   Open http://localhost:3000 in your browser\n");
+	console.log(`\n✅ Resume Agent server → http://localhost:${PORT}`);
+	console.log("   Open http://localhost:3000\n");
 });

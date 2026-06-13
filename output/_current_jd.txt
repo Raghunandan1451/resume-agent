@@ -1,19 +1,18 @@
-We're Hiring: Frontend Developer
-Are you passionate about building modern, responsive web applications? We're looking for a Frontend Developer to join a fast-growing product-based organization and help create exceptional user experiences.
-📍 Location: Bellandur, Bangalore
- 🏢 Work Mode: Hybrid
- 💼 Experience: 0–1 Year
- 🎓 Fresh Graduates & Final Year Students Welcome
-Key Responsibilities
-✅ Build and maintain responsive web pages and UI components
- ✅ Develop dashboard layouts and interactive interfaces
- ✅ Convert design mockups into pixel-perfect web applications
- ✅ Collaborate with designers and backend developers
- ✅ Write clean, reusable, and maintainable code
- ✅ Ensure cross-browser and mobile compatibility
-Required Skills
-✔ HTML5, CSS3, JavaScript (ES6+)
- ✔ Basic knowledge of React.js and Next.js
- ✔ Understanding of UI/UX principles
- ✔ Strong problem-solving skills
- ✔ Good communication and teamwork
+ 𝐇𝐢𝐫𝐢𝐧𝐠 𝐑𝐞𝐚𝐜𝐭𝐉𝐒 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫. 𝐂𝐫𝐞𝐚𝐭𝐞. 𝐎𝐩𝐭𝐢𝐦𝐢𝐳𝐞. 𝐈𝐧𝐧𝐨𝐯𝐚𝐭𝐞.⁣⁣⁣⁣
+ ⁣
+At Tuvoc Technologies Pvt Ltd, we build modern, scalable, and high-performing web applications that deliver exceptional user experiences. We are looking for a skilled 𝐑𝐞𝐚𝐜𝐭𝐉𝐒 𝐃𝐞𝐯𝐞𝐥𝐨𝐩𝐞𝐫 who is passionate about crafting intuitive interfaces and developing robust front-end solutions.⁣⁣⁣⁣
+ ⁣
+🔹 𝐉𝐨𝐛 𝐓𝐢𝐭𝐥𝐞: ReactJS Developer⁣⁣⁣⁣
+🔹 𝐄𝐱𝐩𝐞𝐫𝐢𝐞𝐧𝐜𝐞: 2 to 4 Years⁣⁣⁣⁣
+🔹 𝐈𝐦𝐦𝐞𝐝𝐢𝐚𝐭𝐞 𝐉𝐨𝐢𝐧𝐞𝐫𝐬 𝐏𝐫𝐞𝐟𝐞𝐫𝐫𝐞𝐝⁣⁣⁣⁣
+ ⁣
+📍 𝐋𝐨𝐜𝐚𝐭𝐢𝐨𝐧: Ahmedabad⁣⁣⁣⁣
+🕒 𝐉𝐨𝐛 𝐓𝐲𝐩𝐞: Full-Time, On-Site⁣⁣⁣⁣
+ ⁣
+✨ 𝐖𝐡𝐲 𝐉𝐨𝐢𝐧 𝐓𝐮𝐯𝐨𝐜 𝐓𝐞𝐜𝐡𝐧𝐨𝐥𝐨𝐠𝐢𝐞𝐬?⁣⁣⁣⁣
+✔ 5 Working Days⁣⁣⁣⁣
+✔ Flexible Timings⁣⁣⁣⁣
+✔ Growth-Driven Work Culture⁣⁣⁣⁣
+✔ Supportive and Skilled Team⁣⁣⁣⁣
+✔ Opportunity to Work on Innovative Projects⁣⁣⁣⁣
+ ⁣

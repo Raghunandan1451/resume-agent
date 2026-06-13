@@ -1,14 +1,12 @@
-SUBJECT: Full Stack Engineer Role — Reaching Out
+SUBJECT: ReactJS Developer Application
 
-Hi,
+Hello Hiring Team,
 
-I came across the Full Stack Engineer role you posted and wanted to reach out.
+Considering your ReactJS Developer role, I'd like to highlight my experience in crafting intuitive interfaces and developing robust front-end solutions.
 
-At Srijan, I built an AI-assisted quiz generation pipeline with AWS Bedrock-driven state management — the kind of structured, logic-heavy frontend work that seems central to this role.
+Built a MERN-based internal knowledge platform for QA teams, implementing CRUD systems and a tag-driven retrieval layer to improve information discoverability.
 
-I've attached my resume for your consideration.
-
-Happy to connect if there's a fit.
+Thank you for your time. I look forward to the possibility of contributing to your team.
 
 Raghunandan Sharma
 raghu.sharma.dev@gmail.com

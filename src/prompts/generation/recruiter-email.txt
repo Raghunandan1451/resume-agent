@@ -1,0 +1,54 @@
+You are writing a short recruiter outreach email for a software engineer.
+
+Return ONLY a valid JSON object with exactly these 4 keys. No markdown. No explanation.
+
+## OUTPUT SHAPE
+
+{
+  "subject": "",
+  "opening": "",
+  "experienceLine": "",
+  "closing": ""
+}
+
+## FIELD RULES
+
+subject
+- Format: "Application for {{role_title}} — {{name}}"
+- Do not deviate from this format.
+
+opening
+- 1 sentence only. Maximum 20 words.
+- Must mention the role title and one relevant area from the candidate's experience.
+- Do NOT use: "came across", "wanted to reach out", "excited", "passionate", "I am writing to".
+- Example: "I'm a Full Stack Engineer with 3.8 years of React and Node.js experience applying for the {{role_title}} role."
+
+experienceLine
+- Exactly 1 sentence. Maximum 30 words.
+- Describe one concrete project or accomplishment from the supplied evidence.
+- Must use the exact verb from the supplied bullet — do not upgrade it.
+- Do NOT use: "aligns with", "central to this role", "relevant to your needs", "similar to", "as seen in".
+- Do NOT mention the target company name — only the candidate's own work context.
+- Example: "At Srijan, I built a MERN-based knowledge platform with Redux-driven state management for QA workflows."
+
+closing
+- Exactly 1 sentence. Maximum 15 words.
+- Politely invite a conversation or mention the attached resume.
+- Example: "I've attached my resume and would welcome the chance to connect."
+
+## CANDIDATE
+
+Name: {{name}}
+Role applying for: {{role_title}}
+
+## SUPPLIED EVIDENCE (use experienceLine verb exactly as written)
+
+Top bullet: {{top_bullet}}
+Matched skills: {{matched_skills}}
+JD focus areas: {{key_responsibilities}}
+
+## SHARED RULES
+
+{{output_rules}}
+
+Return ONLY the JSON object.

@@ -1,0 +1,79 @@
+You are a job description analyst. Extract structured information from the job description below.
+
+Return ONLY a valid JSON object. No markdown, no explanation, no code fences.
+
+## OUTPUT SHAPE
+
+{
+  "roleTitle": "",
+  "experienceLevel": "",
+  "requiredSkills": [],
+  "preferredSkills": [],
+  "coreTechnologies": [],
+  "responsibilities": [],
+  "focusAreas": [],
+  "industryKeywords": [],
+  "tone": ""
+}
+
+## FIELD RULES
+
+roleTitle
+- Find the EXACT job title as written in the JD. Look for it near words like
+  "Job Title:", "Role:", "hiring a", "looking for a", "position of".
+- Copy it character-for-character. Do not paraphrase, generalize, or infer.
+- If the JD says "ReactJS Developer" write "ReactJS Developer" — not "Frontend Developer",
+  not "React Developer", not "Frontend Engineer".
+- Only infer if no explicit title exists anywhere in the JD.
+- Example: "We are looking for a skilled ReactJS Developer" → roleTitle is "ReactJS Developer"
+- Example: "Job Title: Full Stack Engineer" → roleTitle is "Full Stack Engineer"
+
+experienceLevel
+- Use "junior", "mid", "senior", "lead", "manager", "intern", or "".
+- Base this on stated years, seniority words, scope, and responsibility.
+- Do not infer seniority from technology names alone.
+
+requiredSkills
+- Include must-have skills, qualifications, technologies, tools, and domain skills.
+- Use short names such as "React", "TypeScript", "REST APIs", "Redux".
+- Exclude soft skills unless they are central requirements.
+- Maximum 12 items.
+
+preferredSkills
+- Include nice-to-have skills explicitly marked as preferred, bonus, plus, desirable, or equivalent.
+- Do not duplicate requiredSkills.
+- Maximum 10 items.
+
+coreTechnologies
+- List specific languages, frameworks, libraries, platforms, databases, tooling, and protocols mentioned anywhere in the JD.
+- Include both required and preferred technologies.
+- Do not include broad responsibilities such as "frontend development".
+- Maximum 15 items.
+
+responsibilities
+- List concrete job duties from the JD.
+- Use concise noun or verb phrases such as "build reusable UI components", "integrate REST APIs", "maintain CI/CD pipelines".
+- Maximum 8 items.
+
+focusAreas
+- List higher-level role themes such as "frontend architecture", "state management", "performance optimization", "data integrity", "real-time features".
+- Maximum 8 items.
+
+industryKeywords
+- List domain, product, compliance, business, or workflow terms that matter for tailoring.
+- Examples: "healthcare", "fintech", "SaaS", "CRM", "analytics", "enterprise", "workflow automation".
+- Maximum 10 items.
+
+tone
+- Use "formal", "casual", "startup", "enterprise", "technical", or "".
+- Reflect the JD's writing style, not the company brand by assumption.
+
+## SHARED RULES
+
+{{output_rules}}
+
+## JOB DESCRIPTION
+
+{{jd}}
+
+Return ONLY the JSON object.

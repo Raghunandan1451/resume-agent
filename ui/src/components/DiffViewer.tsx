@@ -35,35 +35,14 @@ function diffed(a: string, b: string) {
 	return a.trim() !== b.trim();
 }
 
-function Tag({
-	label,
-	color = "gray",
-}: {
-	label: string;
-	color?: "gray" | "green" | "amber";
-}) {
-	const bg: Record<string, string> = {
-		gray: "background:#1a1a1a;color:#555;border:1px solid #2a2a2a",
-		green: "background:#0d2e1a;color:#4ade80;border:1px solid #166534",
-		amber: "background:#2d1e00;color:#fbbf24;border:1px solid #92400e",
-	};
+function Tag({ label, green = false }: { label: string; green?: boolean }) {
 	return (
 		<span
-			style={{
-				...Object.fromEntries(
-					bg[color].split(";").map((s) => {
-						const [k, v] = s.split(":");
-						return [
-							k.replace(/-([a-z])/g, (_, c) => c.toUpperCase()),
-							v,
-						];
-					}),
-				),
-				fontSize: 10,
-				padding: "2px 7px",
-				borderRadius: 20,
-				fontFamily: "monospace",
-			}}
+			className={`text-[10px] px-2 py-0.5 rounded-full font-mono border ${
+				green
+					? "bg-green-950 text-green-500 border-green-800"
+					: "bg-neutral-900 text-neutral-600 border-neutral-800"
+			}`}
 		>
 			{label}
 		</span>
@@ -75,90 +54,60 @@ function BulletRow({ base, tailored }: { base: Bullet; tailored: Bullet }) {
 		base.verb + base.text,
 		tailored.verb + tailored.text,
 	);
-	const cell = (side: "base" | "tailored") => {
-		const b = side === "base" ? base : tailored;
+
+	const cell = (b: Bullet, side: "base" | "tailored") => {
 		const isChanged = side === "tailored" && changed;
 		return (
 			<div
-				style={{
-					background: changed
+				className={`p-3 text-xs leading-relaxed ${
+					side === "base" ? "rounded-l-md" : "rounded-r-md"
+				} ${
+					changed
 						? side === "base"
-							? "#1a0e0e"
-							: "#0d1f0d"
-						: "#111",
-					padding: "9px 13px",
-					borderRadius:
-						side === "base" ? "6px 0 0 6px" : "0 6px 6px 0",
-					borderLeft: `3px solid ${changed ? (side === "base" ? "#7f1d1d" : "#14532d") : "#1a1a1a"}`,
-					fontSize: 12,
-					lineHeight: 1.6,
-					color: isChanged ? "#e2e8f0" : "#666",
-				}}
+							? "bg-red-950/40 border-l-2 border-red-900"
+							: "bg-green-950/40 border-l-2 border-green-900"
+						: "bg-neutral-900/40 border-l-2 border-neutral-800"
+				}`}
 			>
-				<strong style={{ color: isChanged ? "#86efac" : "#888" }}>
+				<strong
+					className={
+						isChanged ? "text-green-400" : "text-neutral-500"
+					}
+				>
 					{b.verb}
 				</strong>{" "}
-				{b.text}
-				<div
-					style={{
-						marginTop: 5,
-						display: "flex",
-						gap: 3,
-						flexWrap: "wrap" as const,
-					}}
+				<span
+					className={
+						isChanged ? "text-neutral-200" : "text-neutral-600"
+					}
 				>
+					{b.text}
+				</span>
+				<div className="flex flex-wrap gap-1 mt-1.5">
 					{b.tags.map((t) => (
-						<Tag
-							key={t}
-							label={t}
-							color={isChanged ? "green" : "gray"}
-						/>
+						<Tag key={t} label={t} green={isChanged} />
 					))}
 				</div>
 			</div>
 		);
 	};
+
 	return (
-		<div
-			style={{
-				display: "grid",
-				gridTemplateColumns: "1fr 1fr",
-				gap: 1,
-				marginBottom: 2,
-			}}
-		>
-			{cell("base")}
-			{cell("tailored")}
+		<div className="grid grid-cols-2 gap-px mb-px">
+			{cell(base, "base")}
+			{cell(tailored, "tailored")}
 		</div>
 	);
 }
 
 function SectionLabel({ label, changed }: { label: string; changed: boolean }) {
 	return (
-		<div
-			style={{
-				display: "flex",
-				alignItems: "center",
-				gap: 8,
-				margin: "24px 0 8px",
-				borderBottom: "1px solid #1a1a1a",
-				paddingBottom: 6,
-			}}
-		>
-			<span style={{ fontSize: 10, color: "#444", letterSpacing: 2 }}>
-				{label.toUpperCase()}
+		<div className="flex items-center gap-2 mt-6 mb-2 border-b border-neutral-900 pb-1.5">
+			<span className="text-[10px] text-neutral-600 tracking-widest uppercase">
+				{label}
 			</span>
 			{changed && (
-				<span
-					style={{
-						fontSize: 10,
-						padding: "2px 7px",
-						borderRadius: 20,
-						background: "#2d1e00",
-						color: "#fbbf24",
-						border: "1px solid #92400e",
-					}}
-				>
+				<span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-950 text-amber-400 border border-amber-800">
 					changed
 				</span>
 			)}
@@ -169,36 +118,17 @@ function SectionLabel({ label, changed }: { label: string; changed: boolean }) {
 export default function DiffViewer({ base, tailored }: Props) {
 	const summaryChanged = diffed(base.header.summary, tailored.header.summary);
 	const titleChanged = diffed(base.header.title, tailored.header.title);
+	const skillsChanged =
+		JSON.stringify(base.skills) !== JSON.stringify(tailored.skills);
 
 	return (
-		<div style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+		<div className="font-mono">
 			{/* Column headers */}
-			<div
-				style={{
-					display: "grid",
-					gridTemplateColumns: "1fr 1fr",
-					gap: 1,
-					marginBottom: 12,
-				}}
-			>
-				<div
-					style={{
-						fontSize: 10,
-						color: "#333",
-						letterSpacing: 2,
-						textAlign: "center" as const,
-					}}
-				>
+			<div className="grid grid-cols-2 gap-px mb-3">
+				<div className="text-[10px] text-neutral-700 tracking-widest text-center">
 					BASE
 				</div>
-				<div
-					style={{
-						fontSize: 10,
-						color: "#4ade80",
-						letterSpacing: 2,
-						textAlign: "center" as const,
-					}}
-				>
+				<div className="text-[10px] text-green-700 tracking-widest text-center">
 					TAILORED
 				</div>
 			</div>
@@ -206,66 +136,33 @@ export default function DiffViewer({ base, tailored }: Props) {
 			{/* Title */}
 			{titleChanged && (
 				<>
-					<SectionLabel label="Title" changed={titleChanged} />
-					<div
-						style={{
-							display: "grid",
-							gridTemplateColumns: "1fr 1fr",
-							gap: 1,
-						}}
-					>
-						{[base.header.title, tailored.header.title].map(
-							(t, i) => (
-								<div
-									key={i}
-									style={{
-										background:
-											i === 0 ? "#1a0e0e" : "#0d1f0d",
-										padding: "10px 14px",
-										borderRadius:
-											i === 0
-												? "6px 0 0 6px"
-												: "0 6px 6px 0",
-										borderLeft: `3px solid ${i === 0 ? "#7f1d1d" : "#14532d"}`,
-										fontSize: 13,
-										color: i === 1 ? "#86efac" : "#666",
-									}}
-								>
-									{t}
-								</div>
-							),
-						)}
+					<SectionLabel label="Title" changed />
+					<div className="grid grid-cols-2 gap-px">
+						<div className="p-3 text-sm bg-red-950/40 border-l-2 border-red-900 rounded-l-md text-neutral-500">
+							{base.header.title}
+						</div>
+						<div className="p-3 text-sm bg-green-950/40 border-l-2 border-green-900 rounded-r-md text-green-400">
+							{tailored.header.title}
+						</div>
 					</div>
 				</>
 			)}
 
 			{/* Summary */}
 			<SectionLabel label="Summary" changed={summaryChanged} />
-			<div
-				style={{
-					display: "grid",
-					gridTemplateColumns: "1fr 1fr",
-					gap: 1,
-				}}
-			>
+			<div className="grid grid-cols-2 gap-px">
 				{[base.header.summary, tailored.header.summary].map((s, i) => (
 					<div
 						key={i}
-						style={{
-							background: summaryChanged
+						className={`p-3 text-xs leading-relaxed ${
+							i === 0 ? "rounded-l-md" : "rounded-r-md"
+						} ${
+							summaryChanged
 								? i === 0
-									? "#1a0e0e"
-									: "#0d1f0d"
-								: "#111",
-							padding: "10px 14px",
-							borderRadius:
-								i === 0 ? "6px 0 0 6px" : "0 6px 6px 0",
-							borderLeft: `3px solid ${summaryChanged ? (i === 0 ? "#7f1d1d" : "#14532d") : "#1a1a1a"}`,
-							fontSize: 12,
-							lineHeight: 1.7,
-							color:
-								summaryChanged && i === 1 ? "#e2e8f0" : "#666",
-						}}
+									? "bg-red-950/40 border-l-2 border-red-900"
+									: "bg-green-950/40 border-l-2 border-green-900"
+								: "bg-neutral-900/40 border-l-2 border-neutral-800"
+						} ${summaryChanged && i === 1 ? "text-neutral-200" : "text-neutral-600"}`}
 					>
 						{s}
 					</div>
@@ -273,48 +170,30 @@ export default function DiffViewer({ base, tailored }: Props) {
 			</div>
 
 			{/* Skills */}
-			<SectionLabel
-				label="Skills"
-				changed={
-					JSON.stringify(base.skills) !==
-					JSON.stringify(tailored.skills)
-				}
-			/>
-			<div
-				style={{
-					display: "grid",
-					gridTemplateColumns: "1fr 1fr",
-					gap: 1,
-				}}
-			>
+			<SectionLabel label="Skills" changed={skillsChanged} />
+			<div className="grid grid-cols-2 gap-px">
 				{[base.skills, tailored.skills].map((skills, si) => (
 					<div
 						key={si}
-						style={{
-							background: "#111",
-							padding: "10px 14px",
-							borderRadius:
-								si === 0 ? "6px 0 0 6px" : "0 6px 6px 0",
-							borderLeft: "3px solid #1a1a1a",
-							fontSize: 12,
-						}}
+						className={`p-3 text-xs bg-neutral-900/40 border-l-2 border-neutral-800 ${
+							si === 0 ? "rounded-l-md" : "rounded-r-md"
+						}`}
 					>
 						{skills.map((cat) => (
-							<div key={cat.label} style={{ marginBottom: 6 }}>
-								<span style={{ color: "#444", marginRight: 6 }}>
+							<div key={cat.label} className="mb-1.5">
+								<span className="text-neutral-600 mr-1.5">
 									{cat.label}:
 								</span>
 								{cat.items.map((item, i) => (
 									<span
 										key={item}
-										style={{
-											color:
-												i === 0
-													? si === 1
-														? "#86efac"
-														: "#888"
-													: "#555",
-										}}
+										className={
+											i === 0
+												? si === 1
+													? "text-green-400"
+													: "text-neutral-400"
+												: "text-neutral-600"
+										}
 									>
 										{item}
 										{i < cat.items.length - 1 ? ", " : ""}

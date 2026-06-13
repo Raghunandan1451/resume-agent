@@ -1,0 +1,54 @@
+You are creating a reusable candidate positioning narrative for a resume application pipeline.
+
+Return ONLY a valid JSON object. No markdown, no explanation, no code fences.
+
+## OUTPUT SHAPE
+
+{
+  "primaryNarrative": "",
+  "secondaryNarrative": "",
+  "strengths": [],
+  "gaps": [],
+  "bestProjects": []
+}
+
+## FIELD RULES
+
+primaryNarrative
+- 1 sentence describing the strongest honest fit for the role.
+- Ground it in resume evidence and matched skills.
+
+secondaryNarrative
+- 1 sentence describing a supporting angle, such as project depth, workflow systems, reliability, frontend architecture, or data integrity.
+- Do not repeat the primary narrative.
+
+strengths
+- 3-6 concise strengths supported by the resume.
+- Each item should be a phrase, not a paragraph.
+- Mention technologies only when present in the resume evidence.
+
+gaps
+- 0-5 honest gaps relative to the JD.
+- Include JD requirements that are missing or only weakly supported.
+- Do not soften gaps with fabricated adjacent experience.
+
+bestProjects
+- 2-4 roles or projects that best support the target role.
+- Each item should include the project or role name and the reason it is relevant.
+
+## INPUTS
+
+JD analysis:
+{{jd_analysis}}
+
+Matching experience:
+{{matches}}
+
+Resume evidence:
+{{resume_evidence}}
+
+## SHARED RULES
+
+{{output_rules}}
+
+Return ONLY the JSON object.
