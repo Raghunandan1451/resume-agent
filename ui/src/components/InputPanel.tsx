@@ -15,6 +15,7 @@ export default function InputPanel({ onRun, running }: Props) {
 	const [recruiterName, setRecruiterName] = useState("");
 	const [companyName, setCompanyName] = useState("");
 	const [includeCover, setIncludeCover] = useState(false);
+	const [includeEmail, setIncludeEmail] = useState(false);
 
 	const canRun = jdText.trim().length > 20 && !running;
 
@@ -96,10 +97,42 @@ export default function InputPanel({ onRun, running }: Props) {
 				</span>
 			</label>
 
+			{/* Email toggle */}
+			<label className="flex items-center gap-3 cursor-pointer select-none">
+				<button
+					type="button"
+					onClick={() => setIncludeEmail((v) => !v)}
+					className={[
+						"relative w-9 h-5 rounded-full border transition-colors duration-200",
+						includeEmail
+							? "bg-green-900 border-green-700"
+							: "bg-neutral-900 border-neutral-700",
+					].join(" ")}
+				>
+					<span
+						className={[
+							"absolute top-0.5 w-3.5 h-3.5 rounded-full transition-all duration-200",
+							includeEmail
+								? "left-4.5 bg-green-400"
+								: "left-0.5 bg-neutral-600",
+						].join(" ")}
+					/>
+				</button>
+				<span className="text-xs text-neutral-500">
+					Generate recruiter email
+				</span>
+			</label>
+
 			{/* Run button */}
 			<button
 				onClick={() =>
-					onRun({ jdText, recruiterName, companyName, includeCover })
+					onRun({
+						jdText,
+						recruiterName,
+						companyName,
+						includeCover,
+						includeEmail,
+					})
 				}
 				disabled={!canRun}
 				className={[

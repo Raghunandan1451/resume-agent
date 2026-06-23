@@ -16,6 +16,7 @@ import path from "path";
 import fs from "fs";
 import { execSync } from "child_process";
 import { runPipeline, OUTPUT_DIR } from "../src/services/pipeline.service";
+import { checkOllama } from "../src/services/ollama.service";
 import { loadResume } from "../src/utils/resume.utils";
 import {
 	injectIntoTemplate,
@@ -34,7 +35,15 @@ app.use(express.json());
 // ─── POST /api/run ────────────────────────────────────────────────────────────
 
 app.post("/api/run", async (req, res) => {
-	const { jdText, recruiterName, companyName, includeCover } = req.body;
+	const { jdText, recruiterName, companyName, includeCover, includeEmail } =
+		req.body;
+	const includeEmailFlag = !!includeEmail;
+	console.log("Run request options:", {
+		recruiterName,
+		companyName,
+		includeCover,
+		includeEmail: includeEmailFlag,
+	});
 
 	if (!jdText?.trim()) {
 		res.status(400).json({ error: "JD text is required" });
@@ -46,6 +55,17 @@ app.post("/api/run", async (req, res) => {
 	res.setHeader("Cache-Control", "no-cache");
 	res.setHeader("Connection", "keep-alive");
 	res.flushHeaders();
+
+	// Quick health-check to ensure Ollama is reachable before starting pipeline
+	try {
+		await checkOllama(3000);
+	} catch (err) {
+		const send = (event: string, data: unknown) =>
+			res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+		send("pipeline_error", { message: (err as Error).message });
+		res.end();
+		return;
+	}
 
 	const send = (event: string, data: unknown) =>
 		res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
@@ -68,6 +88,11 @@ app.post("/api/run", async (req, res) => {
 			status: "pending",
 		},
 		{ id: "generate", label: "Generating outputs", status: "pending" },
+		{
+			id: "email",
+			label: "Generating recruiter email",
+			status: includeEmailFlag ? "pending" : "skipped",
+		},
 		{ id: "compile", label: "Compiling resume PDF", status: "pending" },
 		{
 			id: "cover",
@@ -122,11 +147,30 @@ app.post("/api/run", async (req, res) => {
 		fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 		fs.writeFileSync(path.join(OUTPUT_DIR, "_current_jd.txt"), jdText);
 
+		// Remove stale outputs so a failed run doesn't expose previous results
+		// Always remove tailored.json so UI won't show stale tailored resume
+		const safeUnlink = (p: string) => {
+			try {
+				if (fs.existsSync(p)) fs.unlinkSync(p);
+			} catch {
+				/* ignore */
+			}
+		};
+		safeUnlink(path.join(OUTPUT_DIR, "tailored.json"));
+		// If email generation not requested, remove previous email
+		if (!includeEmailFlag) safeUnlink(path.join(OUTPUT_DIR, "email.txt"));
+		// If cover not requested, remove previous cover files
+		if (!includeCover) {
+			safeUnlink(path.join(OUTPUT_DIR, "cover_letter.txt"));
+			safeUnlink(path.join(OUTPUT_DIR, "cover_letter.pdf"));
+		}
+
 		// Run pipeline
 		const result = await runPipeline(jdText, resume, {
 			recruiterName,
 			companyName,
 			includeCover,
+			includeEmail: includeEmailFlag,
 		});
 
 		// Restore console.log
@@ -142,6 +186,16 @@ app.post("/api/run", async (req, res) => {
 					: "",
 			});
 		}
+
+		// Emit email step result (was optional)
+		send("step_update", {
+			id: "email",
+			status: result.email
+				? "done"
+				: includeEmailFlag
+					? "failed"
+					: "skipped",
+		});
 
 		// Compile resume PDF
 		send("step_update", { id: "compile", status: "running" });
@@ -244,6 +298,7 @@ app.post("/api/run", async (req, res) => {
 		send("pipeline_done", { message: "Pipeline complete" });
 	} catch (err) {
 		restoreConsole?.();
+		console.error("Pipeline error:", err);
 		send("pipeline_error", { message: (err as Error).message });
 	}
 
@@ -302,3 +357,23 @@ app.listen(PORT, () => {
 	console.log(`\n✅ Resume Agent server → http://localhost:${PORT}`);
 	console.log("   Open http://localhost:3000\n");
 });
+
+// Run a background health-check and log status
+// Retry startup health-check once with a longer timeout to accommodate cold starts
+checkOllama(8000)
+	.then(() => console.log("Ollama health-check: reachable"))
+	.catch(async (firstErr) => {
+		console.warn(
+			"Ollama health-check (first attempt) failed -",
+			firstErr.message,
+		);
+		try {
+			await checkOllama(8000);
+			console.log("Ollama health-check: reachable (retry)");
+		} catch (err) {
+			console.warn(
+				"Ollama health-check: unreachable after retry -",
+				(err as Error).message,
+			);
+		}
+	});

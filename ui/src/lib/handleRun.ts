@@ -9,6 +9,7 @@ export type RunParams = {
 	recruiterName: string;
 	companyName: string;
 	includeCover: boolean;
+	includeEmail?: boolean;
 };
 
 export interface OutputData {

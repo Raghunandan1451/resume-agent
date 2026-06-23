@@ -127,6 +127,7 @@ export interface PipelineOptions {
 	recruiterName?: string;
 	companyName?: string;
 	includeCover?: boolean;
+	includeEmail?: boolean;
 }
 
 export interface PipelineResult {
@@ -134,7 +135,7 @@ export interface PipelineResult {
 	matches: MatchResult;
 	positioning: CandidatePositioning;
 	tailoredResume: TailoredResumeOutput;
-	email: RecruiterEmailOutput;
+	email: RecruiterEmailOutput | null;
 	coverLetter: CoverLetterOutput | null;
 }
 

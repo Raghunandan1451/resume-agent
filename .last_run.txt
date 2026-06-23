@@ -1,0 +1,27 @@
+event: steps
+data: [{"id":"analyze","label":"Analyzing job description","status":"pending"},{"id":"match","label":"Extracting matching experience","status":"pending"},{"id":"position","label":"Building candidate positioning","status":"pending"},{"id":"generate","label":"Generating outputs","status":"pending"},{"id":"email","label":"Generating recruiter email","status":"skipped"},{"id":"compile","label":"Compiling resume PDF","status":"pending"},{"id":"cover","label":"Compiling cover letter PDF","status":"skipped"}]
+
+event: step_update
+data: {"id":"analyze","status":"running"}
+
+event: step_update
+data: {"id":"analyze","status":"done","duration":"11.7s"}
+
+event: step_update
+data: {"id":"match","status":"running"}
+
+event: step_update
+data: {"id":"match","status":"done","duration":"23.8s"}
+
+event: step_update
+data: {"id":"position","status":"running"}
+
+event: step_update
+data: {"id":"position","status":"done","duration":"13.6s"}
+
+event: step_update
+data: {"id":"generate","status":"running"}
+
+event: pipeline_error
+data: {"message":"Ollama fetch to http://127.0.0.1:11434/api/generate failed: This operation was aborted"}
+

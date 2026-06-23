@@ -40,7 +40,6 @@ interface ResumeEvidenceLine {
 
 export async function analyzeJD(jd: string): Promise<JDAnalysis> {
 	console.log("  [1/4] Analyzing JD...");
-
 	const prompt = buildPrompt("extraction/analyze-jd.txt", { jd });
 	const raw = await callOllama(prompt, {
 		temperature: 0.2,
@@ -71,7 +70,6 @@ export async function extractMatches(
 	});
 
 	const fallback = buildLocalMatchResult(resume, jdAnalysis);
-
 	try {
 		const raw = await callOllama(prompt, {
 			temperature: 0.2,
@@ -314,7 +312,15 @@ export async function runPipeline(
 	console.log("\n  [4/4] Generating outputs...");
 	const [tailoredResume, email, coverLetter] = await Promise.all([
 		tailorResume(resume, jdAnalysis, matches, positioning),
-		generateRecruiterEmail(resume, jdAnalysis, matches, positioning, opts),
+		opts.includeEmail
+			? generateRecruiterEmail(
+					resume,
+					jdAnalysis,
+					matches,
+					positioning,
+					opts,
+				)
+			: Promise.resolve(null),
 		opts.includeCover
 			? generateCoverLetter(resume, jdAnalysis, matches, positioning)
 			: Promise.resolve(null),
@@ -325,10 +331,12 @@ export async function runPipeline(
 		JSON.stringify(tailoredResume, null, 2),
 	);
 
-	fs.writeFileSync(
-		path.join(OUTPUT_DIR, "email.txt"),
-		`SUBJECT: ${email.subject}\n\n${formatRecruiterEmail(email, resume, opts)}`,
-	);
+	if (email) {
+		fs.writeFileSync(
+			path.join(OUTPUT_DIR, "email.txt"),
+			`SUBJECT: ${email.subject}\n\n${formatRecruiterEmail(email, resume, opts)}`,
+		);
+	}
 
 	if (coverLetter) {
 		fs.writeFileSync(
@@ -559,17 +567,27 @@ function restoreLockedResumeFacts(
 	};
 }
 
+// ─── Drop-in replacements for pipeline.service.ts ────────────────────────────
+// Replace restoreSkills, restoreRoles, restoreProjects, and restoreBullets
+// with these versions. They guard against the model returning objects instead
+// of arrays, which causes "X.find is not a function" errors.
+
 function restoreSkills(
 	originalSkills: Resume["skills"],
 	tailoredSkills: Resume["skills"] | undefined,
 ): Resume["skills"] {
+	// Guard: model sometimes returns {} instead of [] for skills
+	const safeTailored = Array.isArray(tailoredSkills) ? tailoredSkills : [];
+
 	return originalSkills.map((category, index) => {
 		const tailoredCategory =
-			tailoredSkills?.find((item) => item.label === category.label) ??
-			tailoredSkills?.[index];
+			safeTailored.find((item) => item?.label === category.label) ??
+			safeTailored[index];
+
 		const allowed = new Set(
 			category.items.map((item) => item.toLowerCase()),
 		);
+
 		const reordered = uniqueStrings(tailoredCategory?.items).filter(
 			(item) => allowed.has(item.toLowerCase()),
 		);
@@ -589,13 +607,16 @@ function restoreRoles(
 	originalRoles: Role[],
 	tailoredRoles: Role[] | undefined,
 ): Role[] {
+	// Guard: model sometimes returns {} or null instead of []
+	const safeTailored = Array.isArray(tailoredRoles) ? tailoredRoles : [];
+
 	return originalRoles.map((role, index) => {
 		const tailoredRole =
-			tailoredRoles?.find(
+			safeTailored.find(
 				(item) =>
-					item.company === role.company &&
-					item.period === role.period,
-			) ?? tailoredRoles?.[index];
+					item?.company === role.company &&
+					item?.period === role.period,
+			) ?? safeTailored[index];
 
 		return {
 			company: role.company,
@@ -611,10 +632,15 @@ function restoreProjects(
 	originalProjects: Project[],
 	tailoredProjects: Project[] | undefined,
 ): Project[] {
+	// Guard: model sometimes returns {} or null instead of []
+	const safeTailored = Array.isArray(tailoredProjects)
+		? tailoredProjects
+		: [];
+
 	return originalProjects.map((project, index) => {
 		const tailoredProject =
-			tailoredProjects?.find((item) => item.name === project.name) ??
-			tailoredProjects?.[index];
+			safeTailored.find((item) => item?.name === project.name) ??
+			safeTailored[index];
 
 		return {
 			name: project.name,
@@ -631,13 +657,19 @@ function restoreBullets(
 	originalBullets: Bullet[],
 	tailoredBullets: Bullet[] | undefined,
 ): Bullet[] {
-	if (!tailoredBullets?.length) return originalBullets;
+	// Guard: model sometimes returns {} or a string instead of []
+	if (!Array.isArray(tailoredBullets) || tailoredBullets.length === 0) {
+		return originalBullets;
+	}
 
-	const originalVerbs = new Set(originalBullets.map((bullet) => bullet.verb));
+	const originalVerbs = new Set(originalBullets.map((b) => b.verb));
+
 	const restored = tailoredBullets
 		.slice(0, originalBullets.length)
 		.map((bullet, index) => {
 			const fallback = originalBullets[index];
+			// Guard: bullet itself might not be an object
+			if (!bullet || typeof bullet !== "object") return fallback;
 			return {
 				verb: originalVerbs.has(bullet.verb)
 					? bullet.verb
@@ -649,6 +681,7 @@ function restoreBullets(
 			};
 		});
 
+	// Fill any missing bullets from the original
 	while (restored.length < originalBullets.length) {
 		restored.push(originalBullets[restored.length]);
 	}

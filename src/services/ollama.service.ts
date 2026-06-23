@@ -1,8 +1,9 @@
 // ─── Ollama service ───────────────────────────────────────────────────────────
 // Single source for all Ollama API calls.
-// Change MODEL or OLLAMA_URL here to affect the entire pipeline.
+// Use IPv4 loopback to avoid intermittent ::1/127.0.0.1 resolution issues.
 
-const OLLAMA_URL = "http://localhost:11434/api/generate";
+const OLLAMA_URL =
+	process.env.OLLAMA_URL || "http://127.0.0.1:11434/api/generate";
 
 export const MODEL = "qwen2.5:7b";
 
@@ -11,30 +12,80 @@ export interface OllamaOptions {
 	numPredict?: number; // max tokens to generate
 }
 
+async function postToOllama(
+	body: unknown,
+	timeoutMs = 120000,
+): Promise<Response> {
+	const controller = new AbortController();
+	const id = setTimeout(() => controller.abort(), timeoutMs);
+	try {
+		const res = await fetch(OLLAMA_URL, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(body),
+			signal: controller.signal as any,
+		});
+		return res;
+	} finally {
+		clearTimeout(id);
+	}
+}
+
 export async function callOllama(
 	prompt: string,
 	options: OllamaOptions = {},
 ): Promise<string> {
 	const { temperature = 0.3, numPredict = 4096 } = options;
 
-	const response = await fetch(OLLAMA_URL, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({
-			model: MODEL,
-			prompt,
-			stream: false,
-			options: { temperature, num_predict: numPredict },
-		}),
-	});
+	const payload = {
+		model: MODEL,
+		prompt,
+		stream: false,
+		options: { temperature, num_predict: numPredict },
+	};
 
-	if (!response.ok) {
-		const err = await response.text();
-		throw new Error(`Ollama error ${response.status}: ${err}`);
+	// Retry a couple times for transient failures
+	const attempts = 3;
+	const backoffMs = 500;
+	let lastErr: Error | null = null;
+	for (let i = 0; i < attempts; i++) {
+		try {
+			const response = await postToOllama(payload, 120000);
+			if (!response.ok) {
+				const errText = await response.text();
+				throw new Error(`Ollama error ${response.status}: ${errText}`);
+			}
+			const data = (await response.json()) as { response: string };
+			return data.response.trim();
+		} catch (err) {
+			lastErr = err as Error;
+			if (i < attempts - 1)
+				await new Promise((r) => setTimeout(r, backoffMs));
+		}
 	}
 
-	const data = (await response.json()) as { response: string };
-	return data.response.trim();
+	throw new Error(
+		`Ollama fetch to ${OLLAMA_URL} failed: ${lastErr?.message ?? "unknown"}`,
+	);
+}
+
+// Lightweight health-check used at startup or before runs
+export async function checkOllama(timeoutMs = 3000): Promise<void> {
+	try {
+		const res = await postToOllama(
+			{ model: MODEL, prompt: "ping", stream: false },
+			timeoutMs,
+		);
+		if (!res.ok) {
+			const txt = await res.text();
+			throw new Error(`health-check status ${res.status}: ${txt}`);
+		}
+		return;
+	} catch (err) {
+		throw new Error(
+			`Ollama health-check failed: ${(err as Error).message}`,
+		);
+	}
 }
 
 // Strips ```json fences that smaller models add despite instructions,
